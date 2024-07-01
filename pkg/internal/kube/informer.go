@@ -333,7 +333,14 @@ func (k *Metadata) initInformers(ctx context.Context, client kubernetes.Interfac
 	if syncTimeout <= 0 {
 		syncTimeout = defaultSyncTimeout
 	}
-	informerFactory := informers.NewSharedInformerFactory(client, resyncTime)
+	var informerFactory informers.SharedInformerFactory
+	if nodeName := os.Getenv("NODE_NAME"); nodeName != "" {
+		informerFactory = informers.NewSharedInformerFactoryWithOptions(client, resyncTime, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.FieldSelector = "metadata.name=" + nodeName
+		}))
+	} else {
+		informerFactory = informers.NewSharedInformerFactory(client, resyncTime)
+	}
 	if err := k.initPodInformer(informerFactory); err != nil {
 		return err
 	}
